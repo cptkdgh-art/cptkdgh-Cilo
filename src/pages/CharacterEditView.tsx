@@ -89,7 +89,7 @@ export default function CharacterEditView() {
 
     setIsGeneratingProfile(true);
     try {
-      const profile = await autoGenerateCharacterProfile(apiKey, autoGenIdea);
+      const profile = await autoGenerateCharacterProfile(settings, autoGenIdea);
       setFormData(prev => ({ ...prev, ...profile }));
     } catch (e: any) {
       alert("생성 실패: " + e.message);
@@ -116,7 +116,7 @@ export default function CharacterEditView() {
     
     setIsGeneratingImg(true);
     try {
-      const b64 = await generateCharacterImage(apiKey, imgPrompt);
+      const b64 = await generateCharacterImage(settings, imgPrompt);
       setFormData(prev => ({ ...prev, avatarUrl: b64 }));
     } catch (e: any) {
       alert("이미지 생성 실패 (콘텐츠 필터링에 걸렸을 수 있습니다): " + e.message);

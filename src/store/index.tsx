@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AppSettings, Character, ChatSession } from '../types';
+import { get, set } from 'idb-keyval';
 
 interface StoreState {
   characters: Character[];
@@ -21,6 +22,10 @@ const defaultSettings: AppSettings = {
   geminiApiKey: '',
   maxOutputTokens: 800,
   safetyBlockNone: true,
+  textModel: 'gemini-3.1-pro-preview',
+  imageModel: 'imagen-3.0-generate-002',
+  userDisplayName: '여행자',
+  userDescription: '평범하지만 호기심 많은 모험가',
 };
 
 const defaultCharacters: Character[] = [
@@ -45,32 +50,50 @@ const defaultCharacters: Character[] = [
 
 const StoreContext = createContext<StoreContextType | null>(null);
 
-function loadState<T>(key: string, fallback: T): T {
-  try {
-    const saved = localStorage.getItem(key);
-    if (saved) return JSON.parse(saved);
-  } catch (e) {
-    console.error(`Failed to load ${key}`, e);
-  }
-  return fallback;
-}
-
-function saveState(key: string, data: any) {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (e) {
-    console.error(`Failed to save ${key}`, e);
-  }
-}
-
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [characters, setCharacters] = useState<Character[]>(() => loadState('clio_characters', defaultCharacters));
-  const [chats, setChats] = useState<ChatSession[]>(() => loadState('clio_chats', []));
-  const [settings, setSettings] = useState<AppSettings>(() => loadState('clio_settings', defaultSettings));
+  const [characters, setCharacters] = useState<Character[]>(defaultCharacters);
+  const [chats, setChats] = useState<ChatSession[]>([]);
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => { saveState('clio_characters', characters); }, [characters]);
-  useEffect(() => { saveState('clio_chats', chats); }, [chats]);
-  useEffect(() => { saveState('clio_settings', settings); }, [settings]);
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const savedChars = await get('clio_characters');
+        if (savedChars) setCharacters(savedChars);
+
+        const savedChats = await get('clio_chats');
+        if (savedChats) setChats(savedChats);
+
+        const savedSettings = await get('clio_settings');
+        if (savedSettings) setSettings({ ...defaultSettings, ...savedSettings });
+      } catch(e) {
+        console.error("Failed to load from IndexedDB", e);
+      } finally {
+        setIsLoaded(true);
+      }
+    }
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      set('clio_characters', characters).catch(console.error);
+    }
+  }, [characters, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      set('clio_chats', chats).catch(console.error);
+    }
+  }, [chats, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+       set('clio_settings', settings).catch(console.error);
+    }
+  }, [settings, isLoaded]);
+
 
   const addCharacter = (char: Character) => setCharacters(prev => [...prev, char]);
   const updateCharacter = (id: string, char: Partial<Character>) => setCharacters(prev => prev.map(c => c.id === id ? { ...c, ...char } : c));
@@ -84,6 +107,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const deleteChat = (id: string) => setChats(prev => prev.filter(c => c.id !== id));
 
   const updateSettings = (newSettings: Partial<AppSettings>) => setSettings(prev => ({ ...prev, ...newSettings }));
+
+  if (!isLoaded) return null; // Or a loading spinner
 
   return (
     <StoreContext.Provider value={{
