@@ -11,9 +11,9 @@ export type Character = {
   name: string;
   avatarUrl: string;
   tagline: string;
-  tags: string[]; // 새로 추가
-  targetAudience: 'all' | 'male' | 'female'; // 새로 추가
-  isNsfw: boolean; // 새로 추가
+  tags: string[];
+  targetAudience: 'all' | 'male' | 'female';
+  isNsfw: boolean;
   worldview: string;
   persona: string;
   memory: string;
@@ -21,13 +21,13 @@ export type Character = {
   userPersonaName: string;
   userPersonaDetails: string;
   customRules: string;
-  lorebook: LorebookEntry[]; // 새로 추가
+  lorebook: LorebookEntry[];
 };
 
 export type LorebookEntry = {
   id: string;
-  keys: string[]; // 콤마로 구분된 키워드 배열
-  content: string; // 설정 내용
+  keys: string[];
+  content: string;
 };
 
 export type TextModel = 
@@ -53,7 +53,7 @@ export type ImageModel =
 export type AppSettings = {
   geminiApiKey: string;
   maxOutputTokens: number;
-  safetyBlockNone: boolean; // Custom setting
+  safetyBlockNone: boolean;
   textModel: TextModel;
   imageModel: ImageModel;
   userDisplayName: string;
