@@ -1,5 +1,5 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { AppSettings, Character, Message, UserPersona } from "../types";
+import { GoogleGenAI, GenerateContentResponse, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { AppSettings, Character, Message } from "../types";
 
 export async function generateChatResponse(
   settings: AppSettings,
@@ -76,17 +76,16 @@ ${character.customRules ? `[시스템 고급 지시 / 포맷팅 룰 (MANDATORY)]
   const config: any = {
     systemInstruction,
     maxOutputTokens: settings.maxOutputTokens || 800,
-    temperature: 0.85, // Adds a bit of creativity for RP
+    temperature: 0.85,
+    ...(settings.safetyBlockNone ? {
+      safetySettings: [
+        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }
+      ]
+    } : {})
   };
-
-  if (settings.safetyBlockNone) {
-    config.safetySettings = [
-      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" }
-    ];
-  }
 
   const response: GenerateContentResponse = await ai.models.generateContent({
     model: settings.textModel || "gemini-3.1-pro-preview",
@@ -134,12 +133,57 @@ export async function autoGenerateCharacterProfile(
     contents: prompt,
     config: {
        responseMimeType: "application/json",
-       safetySettings: [
-         { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-         { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-         { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" }
-       ]
+       ...(settings.safetyBlockNone ? {
+         safetySettings: [
+           { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+           { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+           { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+           { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }
+         ]
+       } : {})
+    }
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("결과물이 비어있습니다.");
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (match && match[1]) {
+      return JSON.parse(match[1]);
+    }
+    throw new Error("JSON 파싱에 실패했습니다.");
+  }
+}
+
+export async function autoGenerateUserPersona(
+  settings: AppSettings,
+  context: string
+): Promise<{ userDisplayName: string; userDescription: string }> {
+  const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("API Key is missing");
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = `
+    다음 입력된 배경이나 요청 사항에 맞춰서, 캐릭터들과 대화할 때 사용할 당신의 '사용자 페르소나'를 JSON 포맷으로 생성하시오.
+    
+    [요청 배경/맥락]
+    ${context}
+
+    [JSON 구조]
+    {
+      "userDisplayName": "사용자의 이름/칭호 (ex: 지휘관, 용사, 주인님, 서큐버스 헌터 등)",
+      "userDescription": "AI 캐릭터들이 참고할 당신의 외형, 성격, 현재 상황, 당신이 가진 권능이나 특징 등"
+    }
+
+    오직 유효한 JSON 포맷 텍스트만 출력하시오.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: settings.textModel || "gemini-3.1-pro-preview",
+    contents: prompt,
+    config: {
+       responseMimeType: "application/json"
     }
   });
 

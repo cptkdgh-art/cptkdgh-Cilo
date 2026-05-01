@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { useStore } from "../store";
-import { User } from "lucide-react";
+import { User, Sparkles, Loader2 } from "lucide-react";
+import { autoGenerateUserPersona } from "../lib/gemini";
 
 import { AppSettings, ImageModel, TextModel } from "../types";
 
 export default function SettingsView() {
   const { settings, updateSettings } = useStore();
-  const [localSettings, setLocalSettings] = useState(settings);
+  const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [personaContext, setPersonaContext] = useState("");
 
   // Debounce save
   useEffect(() => {
@@ -16,11 +19,34 @@ export default function SettingsView() {
     return () => clearTimeout(timer);
   }, [localSettings, updateSettings]);
 
+  const handleGenPersona = async () => {
+    if (!personaContext.trim()) return alert("어떤 페르소나를 만들고 싶은지 간단히 적어주세요.");
+    setIsGenerating(true);
+    try {
+      const res = await autoGenerateUserPersona(localSettings, personaContext);
+      setLocalSettings(prev => ({
+        ...prev,
+        userDisplayName: res.userDisplayName,
+        userDescription: res.userDescription
+      }));
+      setPersonaContext("");
+    } catch (e: any) {
+      alert("생성 실패: " + e.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="p-6 md:p-8 max-w-4xl mx-auto pb-24">
-      <header className="mb-10">
-        <h1 className="serif-title text-4xl font-light mb-2">환경 설정</h1>
-        <p className="text-white/50 text-sm">마스터의 정보와 시스템 API를 설정합니다.</p>
+      <header className="mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <h1 className="serif-title text-4xl font-light mb-2">환경 설정</h1>
+          <p className="text-white/50 text-sm">마스터의 정보와 시스템 API를 설정합니다.</p>
+        </div>
+        <div className="flex gap-2 text-[10px] text-white/20 uppercase tracking-widest font-bold">
+           <span>Auto-Saving Enabled</span>
+        </div>
       </header>
 
       <div className="space-y-8">
@@ -95,7 +121,7 @@ export default function SettingsView() {
                   type="checkbox"
                   checked={localSettings.safetyBlockNone}
                   onChange={e => setLocalSettings(s => ({ ...s, safetyBlockNone: e.target.checked }))}
-                  className="w-5 h-5 accent-orange-500 bg-black/30 border-white/10 rounded"
+                  className="w-5 h-5 accent-orange-500 bg-black/30 border-white/10 rounded cursor-pointer"
                 />
                 <span className="text-sm font-medium text-white/80">
                   콘텐츠 필터링 해제 시도 (Block None)
@@ -109,6 +135,32 @@ export default function SettingsView() {
               <User size={20} className="text-orange-500" />
               사용자 프로필 (나의 페르소나)
             </h2>
+
+            <div className="bg-orange-500/5 border border-orange-500/10 rounded-xl p-5 space-y-3">
+               <h3 className="text-sm font-semibold flex items-center gap-2 text-orange-400">
+                 <Sparkles size={16} /> AI로 내 페르소나 자동 생성 (딸깍)
+               </h3>
+               <p className="text-xs text-white/50 leading-relaxed mb-1">
+                 원하는 컨셉(예: 마왕군 지휘관, 도도한 아가씨의 하인 등)을 입력하면 AI가 이름과 설정을 자동으로 채워줍니다.
+               </p>
+               <div className="flex gap-2">
+                  <input 
+                    type="text"
+                    value={personaContext}
+                    onChange={e => setPersonaContext(e.target.value)}
+                    placeholder="예: 현대 사회에서 이세계로 떨어진 평범한 회사원..."
+                    className="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:border-orange-500/30 outline-none"
+                  />
+                  <button 
+                    onClick={handleGenPersona}
+                    disabled={isGenerating}
+                    className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-orange-900/40 shrink-0"
+                  >
+                    {isGenerating ? <Loader2 size={14} className="animate-spin" /> : "페르소나 생성"}
+                  </button>
+               </div>
+            </div>
+
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wider">나의 이름</label>
@@ -126,10 +178,10 @@ export default function SettingsView() {
                   value={localSettings.userDescription}
                   onChange={e => setLocalSettings(s => ({ ...s, userDescription: e.target.value }))}
                   placeholder="당신은 어떤 사람인가요? AI가 참고할 나의 기본 정보를 적어주세요."
-                  rows={3}
-                  className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:border-orange-500/50 transition-colors resize-none"
+                  rows={4}
+                  className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:border-orange-500/50 transition-colors resize-none leading-relaxed text-sm"
                 />
-                <p className="mt-1 text-[10px] text-white/40">이 설정은 캐릭터와의 대화에서 기본적으로 참고됩니다.</p>
+                <p className="mt-2 text-[10px] text-white/40">이 설정은 캐릭터와의 대화에서 기본적으로 참고됩니다. 캐릭터별 개별 설정은 캐릭터 편집에서 가능합니다.</p>
               </div>
             </div>
           </div>

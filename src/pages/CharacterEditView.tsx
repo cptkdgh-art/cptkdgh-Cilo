@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useStore } from "../store";
 import { generateId } from "../lib/utils";
 import { ArrowLeft, Save, Trash2, Sparkles, ImagePlus, Upload, Link as LinkIcon, LoaderIcon } from "lucide-react";
@@ -10,11 +10,12 @@ import { Character, LorebookEntry } from "../types";
 
 export default function CharacterEditView() {
   const { characterId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { characters, addCharacter, updateCharacter, deleteCharacter, settings } = useStore();
   const isEdit = Boolean(characterId);
 
-  const [autoGenIdea, setAutoGenIdea] = useState("");
+  const [autoGenIdea, setAutoGenIdea] = useState(searchParams.get("idea") || "");
   const [isGeneratingProfile, setIsGeneratingProfile] = useState(false);
 
   const [imgMode, setImgMode] = useState<"url" | "upload" | "ai">("url");
@@ -82,21 +83,31 @@ export default function CharacterEditView() {
     }));
   };
 
-  const handleAutoGen = async () => {
-    if (!autoGenIdea.trim()) return alert("대략적인 상황이나 컨셉을 입력해주세요.");
+  const handleAutoGen = useCallback(async (ideaOverride?: string) => {
+    const finalIdea = ideaOverride || autoGenIdea;
+    if (!finalIdea.trim()) return alert("대략적인 상황이나 컨셉을 입력해주세요.");
+    
     const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY;
     if (!apiKey) return alert("Gemini API Key가 설정 창이나 환경변수에 필요합니다.");
 
     setIsGeneratingProfile(true);
     try {
-      const profile = await autoGenerateCharacterProfile(settings, autoGenIdea);
+      const profile = await autoGenerateCharacterProfile(settings, finalIdea);
       setFormData(prev => ({ ...prev, ...profile }));
     } catch (e: any) {
       alert("생성 실패: " + e.message);
     } finally {
       setIsGeneratingProfile(false);
     }
-  };
+  }, [autoGenIdea, settings]);
+
+  // Handle auto-generation if idea is passed from Home
+  useEffect(() => {
+    const idea = searchParams.get("idea");
+    if (idea && !isEdit) {
+      handleAutoGen(idea);
+    }
+  }, []); // Run once on mount
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -216,7 +227,7 @@ export default function CharacterEditView() {
             className="flex-1 bg-black/40 border border-orange-500/20 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-orange-500/50 text-sm resize-none h-20"
           />
           <button 
-            onClick={handleAutoGen}
+            onClick={() => handleAutoGen()}
             disabled={isGeneratingProfile}
             className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl transition-all font-medium flex items-center justify-center gap-2 shrink-0 shadow-lg shadow-orange-900/20"
           >

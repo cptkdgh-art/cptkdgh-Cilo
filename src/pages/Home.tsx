@@ -1,25 +1,77 @@
-import { Plus as PlusIcon, Settings2, MessageCircle } from "lucide-react";
+import { Plus as PlusIcon, Settings2, MessageCircle, Sparkles, Wand2, Info } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { useStore } from "../store";
 import { generateId } from "../lib/utils";
+import { useState } from "react";
 
 export default function Home() {
-  const { characters, chats } = useStore();
+  const { characters, chats, settings } = useStore();
   const navigate = useNavigate();
+  const [quickIdea, setQuickIdea] = useState("");
+
+  const handleQuickCreate = () => {
+    if (!quickIdea.trim()) return alert("만들고 싶은 캐릭터나 상황을 입력해주세요.");
+    navigate(`/character/new?idea=${encodeURIComponent(quickIdea)}`);
+  };
 
   return (
-    <div className="p-6 md:p-8 max-w-[1400px] mx-auto">
-      <header className="mb-10 flex items-center justify-between">
+    <div className="p-6 md:p-8 max-w-[1400px] mx-auto pb-20">
+      {/* Hero Section */}
+      <section className="mb-8 relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600/20 via-black to-red-900/20 border border-white/5 p-6 md:p-10 shadow-2xl">
+        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+          <Sparkles size={160} />
+        </div>
+        <div className="relative z-10 max-w-2xl">
+          <h1 className="text-3xl md:text-4xl font-light serif-title mb-3 leading-tight">
+            당신의 가장 <span className="text-orange-500 font-medium">은밀한 상상</span>을<br />
+            현실로 만드세요
+          </h1>
+          <p className="text-white/60 mb-6 text-sm md:text-base leading-relaxed">
+            한계를 모르는 AI와 함께하는 고수위 역할극. 
+            이미 수천 명의 사용자가 자신만의 페르소나를 창조하고 대화하고 있습니다.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <input 
+                type="text" 
+                value={quickIdea}
+                onChange={e => setQuickIdea(e.target.value)}
+                placeholder="상황이나 캐릭터를 짧게 적어보세요 (예: 까칠한 여상사)"
+                className="w-full bg-white/10 border border-white/10 rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all shadow-inner"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20">
+                <Wand2 size={18} />
+              </div>
+            </div>
+            <button 
+              onClick={handleQuickCreate}
+              className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95"
+            >
+              <Sparkles size={16} />
+              <span>딸깍 생성</span>
+            </button>
+          </div>
+          
+          <div className="mt-6 flex flex-wrap gap-4 text-[11px] text-white/40 font-medium uppercase tracking-wider">
+             <div className="flex items-center gap-1.5"><Info size={12}/> No Filters (NSFW OK)</div>
+             <div className="flex items-center gap-1.5"><Info size={12}/> Real-time Memory</div>
+             <div className="flex items-center gap-1.5"><Info size={12}/> Image Generation</div>
+          </div>
+        </div>
+      </section>
+
+      <header className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold mb-1 text-white">따끈따끈한 인기 신작 캐릭터</h1>
-          <p className="text-white/50 text-sm">대화를 나눌 파트너를 선택하거나 새로운 캐릭터를 창조하세요.</p>
+          <h2 className="text-2xl font-medium serif-title text-white">따끈따끈한 인기 캐릭터</h2>
+          <p className="text-white/40 text-sm">마음에 드는 캐릭터를 선택해 대화를 시작해보세요.</p>
         </div>
         <Link
           to="/character/new"
-          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-full transition-all text-sm font-bold text-white"
+          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-2.5 rounded-full transition-all text-sm font-bold text-white group"
         >
-          <PlusIcon size={18} />
-          <span>새 캐릭터</span>
+          <PlusIcon size={18} className="text-orange-500 group-hover:rotate-90 transition-transform" />
+          <span>직접 만들기</span>
         </Link>
       </header>
 
