@@ -1,0 +1,6 @@
+{
+  "name": "Clio - Character Chat",
+  "description": "An immersive, adult-oriented character chat application built with Gemini. Supports character creation, persistent memory per turn, worldviews, and API configuration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
